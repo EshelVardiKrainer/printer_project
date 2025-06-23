@@ -1,0 +1,20 @@
+/* Global styles for RTL and font */
+* {
+  font-family: 'Courier New', monospace !important;
+  text-align: right;
+  direction: rtl;
+}
+
+body {
+  direction: rtl;
+}
+
+/* Make sure all radio buttons and labels are properly aligned */
+.radio-group-item {
+  margin-left: 0.5rem;
+}
+
+/* Ensure proper spacing for RTL */
+.space-x-reverse {
+  --tw-space-x-reverse: 1;
+}
