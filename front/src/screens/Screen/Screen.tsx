@@ -140,10 +140,10 @@ export const Screen = (): JSX.Element => {
     // 2. Ensure the account associated with this key has a valid payment method and no billing issues.
     // 3. Confirm that the API key has permissions to use the "gpt-4o" model.
     // 4. If part of an organization, check the organization's overall quota and spending limits.
-    const apiKey; // Replace with your actual API key or fetch it from a secure source
+    const apiKey = import.meta.env.VITE_OPENAI_API_KEY; // Replace with your actual API key or fetch it from a secure source
     if (!apiKey) {
       console.error("API key is missing");
-      alert("API key is missing");
+      alert("API key is missing. Make sure it's set in your .env file.");
       return;
     }
     
