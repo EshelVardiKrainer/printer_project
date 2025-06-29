@@ -140,7 +140,7 @@ export const Screen = (): JSX.Element => {
     // 2. Ensure the account associated with this key has a valid payment method and no billing issues.
     // 3. Confirm that the API key has permissions to use the "gpt-4o" model.
     // 4. If part of an organization, check the organization's overall quota and spending limits.
-    const apiKey = import.meta.env.VITE_OPENAI_API_KEY; // Replace with your actual API key or fetch it from a secure source
+    const apiKey = import.meta.env.VITE_OPENAI_API_KEY; // Use environment variable for API key
     if (!apiKey) {
       console.error("API key is missing");
       alert("API key is missing. Make sure it's set in your .env file.");
@@ -149,59 +149,40 @@ export const Screen = (): JSX.Element => {
     
     console.log("API key is valid:", apiKey.substring(0, 10) + "...");
 
-    const builtInPrompt = `כתוב רשימת חוקים בהתבסס על התשובות שמילאת, צור רשימה של חוקים ונורמות לא-כתובים (כמו ציפיות חברתיות או משפטים שמפנימים מגיל צעיר). אל תשתמש בשמות השאלות או התשובות — רק כתוב חוקים שמתאימים לפרופיל שנוצר מהתשובות.  
+    const answersSummary = Object.values(answers)
+      .map((ans) => ans.answerText)
+      .join("; ");
 
-הנחיות ליצירת החוקים: \\t
-עבור כל תשובה, כתוב 2 עד 5 חוקים קצרים \\t
-החוקים חייבים להתאים רק לתשובה הספציפית (למשל: אל תכתוב על הורות למי שלא אמר שיש לו ילדים) 
-החוקים \\tחייבים להיות קצרים וחדים (2-5 מלים, לעתים רחוקות עד 9 מילים)
-לכבות בין 60 ל-80 חוקים
-חוקים יכולים להתחיל מהמילים: “אל”; “זה”; מה פעלים בציווי; חוקי שאלה; ”לא”
-בקטגוריה “טיפים” תכתוב חוקים שמתחילים במילים “כש...”; “כאשר”; “כמו”; “להיות”; “את”; “אתה”; “אם”; “ככה”, “צריך”; “כולם”; “אף אחד”
-החוקים יהיו בסגנון קצר, ברור וחד, בסגנון דיבור ישראלי
-אין לכתוב כותרות, הסברים או הקשרים – רק את החוקים, כל אחד בשורה חדשה
-כל חוק חייב לעמוד בפני עצמו ולהעביר תחושה או מסר ברור, בלי תלות בהקשר חבוי
-החוקים חייבי להיות כתובים במין שנבחר בשאלה ראשונה, אם נבחרו תשובות “אחר” או “לא רוצה לענות”, אז לכתוב חוקים בשני המינים (לדוגמה: “תגיד/י תודה”)
-80% מהחוקים קשים, כבדים וחדים; 20% מהחוקים חיוביים, קלים ונעימים
+    const builtInPrompt = `
+You are a helpful assistant that generates a social profile analysis based on a survey.
+Based on the user's name and answers, generate a JSON object with the following structure.
 
-\\tתכתוב רק\\tרשימת החוקים, בלי תשובות:
-רק משפטים קצרים, אחד בכל שורה, בלי כותרות
-לערבב את כל החוקים כולל חוקים כללים
-לקטלג את החוקים לפי רשימה הבאה:
-“אל”
-“ציווי”
-“?”
-“זה”
-“לא”
-“טיפים”
+The user's name is: "${examineeName}"
+The user's answers are: "${answersSummary}"
 
-התשובה צריכה להיות בפורמט הבא:
-<behavooral code>
->initiate personal compliance profile
-[כאן יופיעו התשובות של המשתמש מופרדות בפסיק-נקודה, לדוגמה: אישה; 18-30; רווקה; חילונית; סטונדטית; וכו׳]
->analyzing input...
->rulesgenerated:
-int “אל”
-[רשימת חוקים בקטגוריית "אל", כל חוק בשורה חדשה]
-int “ציווי”
-[רשימת חוקים בקטגוריית "ציווי", כל חוק בשורה חדשה]
-int “?”
-[רשימת חוקים בקטגוריית "?", כל חוק בשורה חדשה]
-int “זה”
-[רשימת חוקים בקטגוריית "זה", כל חוק בשורה חדשה]
-int “טיפים”
-[רשימת חוקים בקטגוריית "טיפים", כל חוק בשורה חדשה]
+Generate a JSON object with the following keys: "answers", "rules_al", "rules_zivui", "rules_qmark", "rules_ze", "rules_lo", "rules_tips".
+
+- The "answers" key should contain a summary of the user's answers as a single string, with answers separated by semicolons and newlines for readability.
+- The other keys ("rules_al", "rules_zivui", etc.) should contain a single string with rules separated by newline characters (\n).
+- The rules should be based on the provided answers.
+- The rules must be in Hebrew.
+- The tone of the rules should be sharp, direct, and reflect unwritten social norms in Israel.
+- Generate between 60 and 80 rules in total, distributed among the categories.
+- Do not include any explanations or text outside of the JSON object.
+
+Example of a single key-value pair:
+"rules_al": "אל תהיי קולנית מדי\nאל תיכשלי מול כולם\nאל תעשה בושות"
+
+The entire output must be a single, valid JSON object.
 `;
-    let surveyData = "User Answers:\\n";
-    Object.values(answers).forEach((ans) => {
-      surveyData += `${ans.questionText}: ${ans.answerText}\\n`;
-    });
-    
-    console.log("Prompt being sent to API:", builtInPrompt + surveyData);
-    
+
+    let surveyData = `User Answers:\n${answersSummary}`;
+
+    console.log("Prompt being sent to API:", builtInPrompt);
+
     const requestBody = {
       model: "gpt-4o",
-      messages: [{ role: "user", content: builtInPrompt + surveyData }],
+      messages: [{ role: "user", content: builtInPrompt }],
     };
     
     console.log("Request body:", JSON.stringify(requestBody));
@@ -294,10 +275,42 @@ int “טיפים”
           alert("No response content from LLM");
           return;
         }
-        // alert(content); // Replaced with custom popup
-        setIsProfilePopupOpen(true); // Show the custom success popup
-        setAnswers({}); // Clear the survey answers
-        setExamineeName(""); // Clear the examinee name
+
+        try {
+          // The LLM should return a JSON string.
+          const llmResponse = JSON.parse(content);
+
+          const now = new Date();
+          const finalJson = {
+            name_of_examine: examineeName,
+            date: now.toLocaleDateString("he-IL"),
+            time: now.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" }),
+            ...llmResponse,
+          };
+
+          console.log("Sending final JSON to localhost:3000", finalJson);
+
+          // Send the result to localhost:3000
+          await fetch("http://localhost:3000", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(finalJson),
+          });
+
+          console.log("Successfully sent data to localhost:3000");
+
+          // Show success popup and clear form
+          setIsProfilePopupOpen(true);
+          setAnswers({});
+          setExamineeName("");
+        } catch (jsonError) {
+          console.error("Error processing or sending data:", jsonError);
+          console.error("Raw content from LLM:", content);
+          alert("An error occurred while processing the response. Check the console for details.");
+          return;
+        }
       } catch (fetchError) {
         clearTimeout(timeoutId);
         if (fetchError instanceof Error) {
