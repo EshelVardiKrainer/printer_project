@@ -140,7 +140,7 @@ export const Screen = (): JSX.Element => {
     // 2. Ensure the account associated with this key has a valid payment method and no billing issues.
     // 3. Confirm that the API key has permissions to use the "gpt-4o" model.
     // 4. If part of an organization, check the organization's overall quota and spending limits.
-    const apiKey = import.meta.env.VITE_OPENAI_API_KEY; // Use environment variable for API key
+    const apiKey = process.env.REACT_APP_OPENAI_API_KEY; // Use environment variable for API key
     if (!apiKey) {
       console.error("API key is missing");
       alert("API key is missing. Make sure it's set in your .env file.");
@@ -276,6 +276,11 @@ The entire output must be a single, valid JSON object.
           return;
         }
 
+        // Show success popup and clear form
+        setIsProfilePopupOpen(true);
+        setAnswers({});
+        setExamineeName("");
+
         try {
           // The LLM should return a JSON string.
           const llmResponse = JSON.parse(content);
@@ -301,15 +306,10 @@ The entire output must be a single, valid JSON object.
 
           console.log("Successfully sent data to localhost:3000");
 
-          // Show success popup and clear form
-          setIsProfilePopupOpen(true);
-          setAnswers({});
-          setExamineeName("");
         } catch (jsonError) {
           console.error("Error processing or sending data:", jsonError);
           console.error("Raw content from LLM:", content);
           alert("An error occurred while processing the response. Check the console for details.");
-          return;
         }
       } catch (fetchError) {
         clearTimeout(timeoutId);
