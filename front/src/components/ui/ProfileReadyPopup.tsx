@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 
 interface ProfileReadyPopupProps {
   isOpen: boolean;
@@ -6,24 +6,25 @@ interface ProfileReadyPopupProps {
 }
 
 export const ProfileReadyPopup: React.FC<ProfileReadyPopupProps> = ({ isOpen, onClose }) => {
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (isOpen) {
-      timer = setTimeout(() => {
-        onClose();
-      }, 15000); // 15 seconds
+  const handleClose = () => {
+    onClose();
+  };
+
+  // Effect to scroll to top when the popup is closed.
+  const prevIsOpen = React.useRef(isOpen);
+  React.useEffect(() => {
+    if (prevIsOpen.current && !isOpen) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [isOpen, onClose]);
+    prevIsOpen.current = isOpen;
+  }, [isOpen]);
 
   if (!isOpen) {
     return null;
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={handleClose}>
       {/* Main popup container: fixed dimensions, border, shadow, and flex column layout */}
       <div
         className="shadow-xl text-center rounded-none overflow-hidden border-2 border-black flex flex-col bg-white"
@@ -37,8 +38,8 @@ export const ProfileReadyPopup: React.FC<ProfileReadyPopupProps> = ({ isOpen, on
         </div>
         {/* Body section */}
         <div className="flex items-center justify-center p-6 bg-white" style={{ height: '150px' }}>
-          <p className="text-[#333333] text-[16px] font-bold">
-            לחצו על הכפתור "print" במדפסת
+          <p className="text-[#333333] text-[18px] font-bold">
+            אנא המתן
           </p>
         </div>
       </div>

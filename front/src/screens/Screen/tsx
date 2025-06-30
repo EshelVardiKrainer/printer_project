@@ -1,0 +1,61 @@
+const handleSubmitSurvey = async () => {
+    const unansweredQuestion = questions.find((q) => !answers[q.id]);
+
+    if (unansweredQuestion) {
+      console.log("Submission stopped. First unanswered question:", unansweredQuestion);
+      const element = document.getElementById(`question-${unansweredQuestion.id}`);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      return; // Stop the submission
+    }
+
+    // Show popup immediately for better user feedback
+    setIsProfilePopupOpen(true);
+
+    console.log("Submitting survey with answers:", answers, "Name:", examineeName); // Include name in log
+    
+    // Check if we have any answers
+        if (!content) {
+          console.error("Content is empty in response:", data.choices[0]);
+          // Potentially close the popup and show an error
+          // setIsProfilePopupOpen(false); 
+          alert("No response content from LLM");
+          return;
+        }
+
+        // Clear form after successful API call
+        setAnswers({});
+        setExamineeName("");
+
+        try {
+          // The LLM should return a JSON string.
+          const json = JSON.parse(content);
+
+          // Check if the JSON has the expected structure
+          if (json && typeof json === "object" && !Array.isArray(json)) {
+            // Extract the profile information
+            const { name, email, phone, ...rest } = json;
+
+            // Update the examinee name and other states
+            setExamineeName(name || "");
+            // setExamineeEmail(email || "");
+            // setExamineePhone(phone || "");
+
+            // Optionally, you can navigate to a different page or show a success message
+            // navigate("/thank-you");
+            alert("Survey submitted successfully!");
+          } else {
+            console.error("Unexpected JSON structure:", json);
+            alert("Error: Unexpected response format from the server.");
+          }
+        } catch (parseError) {
+          console.error("Error parsing JSON response:", parseError);
+          alert("Error: Unable to process the response from the server.");
+        }
+      }
+    } catch (e) {
+      console.error("Error while sending survey:", e);
+      alert(`Error while sending survey: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };

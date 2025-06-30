@@ -126,209 +126,233 @@ export const Screen = (): JSX.Element => {
   };
 
   const handleSubmitSurvey = async () => {
-    console.log("Submitting survey with answers:", answers, "Name:", examineeName); // Include name in log
-    
-    // Check if we have any answers
-    if (Object.keys(answers).length === 0) {
-      console.error("No answers provided");
-      alert("Please answer at least one question before submitting");
+    if (!examineeName.trim()) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
-    
-    // Verify API Key and OpenAI Account Status:
-    // 1. Double-check this API key is correct and active in your OpenAI dashboard.
-    // 2. Ensure the account associated with this key has a valid payment method and no billing issues.
-    // 3. Confirm that the API key has permissions to use the "gpt-4o" model.
-    // 4. If part of an organization, check the organization's overall quota and spending limits.
-    const apiKey = process.env.REACT_APP_OPENAI_API_KEY; // Use environment variable for API key
-    if (!apiKey) {
-      console.error("API key is missing");
-      alert("API key is missing. Make sure it's set in your .env file.");
-      return;
+
+    const unansweredQuestion = questions.find((q) => !answers[`question_${q.id}`]);
+
+    if (unansweredQuestion) {
+      const element = document.getElementById(`question-${unansweredQuestion.id}`);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      return; // Stop the submission
     }
-    
-    console.log("API key is valid:", apiKey.substring(0, 10) + "...");
-
-    const answersSummary = Object.values(answers)
-      .map((ans) => ans.answerText)
-      .join("; ");
-
-    const builtInPrompt = `
-You are a helpful assistant that generates a social profile analysis based on a survey.
-Based on the user's name and answers, generate a JSON object with the following structure.
-
-The user's name is: "${examineeName}"
-The user's answers are: "${answersSummary}"
-
-Generate a JSON object with the following keys: "answers", "rules_al", "rules_zivui", "rules_qmark", "rules_ze", "rules_lo", "rules_tips".
-
-- The "answers" key should contain a summary of the user's answers as a single string, with answers separated by semicolons and newlines for readability.
-- The other keys ("rules_al", "rules_zivui", etc.) should contain a single string with rules separated by newline characters (\n).
-- The rules should be based on the provided answers.
-- The rules must be in Hebrew.
-- The tone of the rules should be sharp, direct, and reflect unwritten social norms in Israel.
-- Generate between 60 and 80 rules in total, distributed among the categories.
-- Do not include any explanations or text outside of the JSON object.
-
-Example of a single key-value pair:
-"rules_al": "אל תהיי קולנית מדי\nאל תיכשלי מול כולם\nאל תעשה בושות"
-
-The entire output must be a single, valid JSON object.
-`;
-
-    let surveyData = `User Answers:\n${answersSummary}`;
-
-    console.log("Prompt being sent to API:", builtInPrompt);
-
-    const requestBody = {
-      model: "gpt-4o",
-      messages: [{ role: "user", content: builtInPrompt }],
-    };
-    
-    console.log("Request body:", JSON.stringify(requestBody));
+    // Show popup immediately for better user feedback
+    setIsProfilePopupOpen(true);
 
     try {
-      console.log("Sending request to OpenAI API...");
-      
-      // Debug network conditions
-      console.log("Network status:", navigator.onLine ? "Online" : "Offline");
-      
-      // Using a timeout to catch hanging requests
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-      
+      console.log("Submitting survey with answers:", answers, "Name:", examineeName); // Include name in log
+
+      // Check if we have any answers
+      if (Object.keys(answers).length === 0) {
+        console.error("No answers provided");
+        alert("Please answer at least one question before submitting");
+        return;
+      }
+
+      // Verify API Key and OpenAI Account Status:
+      // 1. Double-check this API key is correct and active in your OpenAI dashboard.
+      // 2. Ensure the account associated with this key has a valid payment method and no billing issues.
+      // 3. Confirm that the API key has permissions to use the "gpt-4o" model.
+      // 4. If part of an organization, check the organization's overall quota and spending limits.
+      const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+      if (!apiKey) {
+        console.error("API key is missing");
+        alert("API key is missing. Make sure it's set in your .env file.");
+        return;
+      }
+
+      console.log("API key is valid:", apiKey.substring(0, 10) + "...");
+
+      const answersSummary = Object.values(answers)
+        .map((ans) => ans.answerText)
+        .join("; ");
+
+      const builtInPrompt = `
+
+You are a helpful assistant that generates a social-profile analysis in Hebrew.
+
+— Input —
+• User name:  "${examineeName}"
+• User answers: "${answersSummary}"
+
+— Task —
+Return **one valid JSON object only** with the exact keys:
+  "answers", "rules_al", "rules_zivui",
+  "rules_qmark", "rules_ze", "rules_lo", "rules_tips".
+
+Formatting rules:
+1.  "answers"-value ► single string; answers separated by semicolons (;) and a literal \\n between lines.
+2.  Each "rules_*"-value ► single string; individual rules separated by the two-character sequence \\n (backslash + n).  
+    ⚠ Do **not** insert real line-breaks inside JSON strings.
+3.  Language ► Hebrew.  
+    Tone ► sharp, direct, unwritten Israeli social norms.
+4.  Produce **up to 42 rules total**:  
+      • up to 10 in "rules_al"  
+      • up to 12 in "rules_zivui"  
+      • up to 5 in each of "rules_qmark", "rules_ze", "rules_lo", "rules_tips"
+5.  Use only straight double-quotes (") around keys and values; no smart quotes.
+6. 6. Output **must start with “{” and end with “}”, with NO \` \`\`\` fences, labels or any extra characters before or after the JSON.**
+
+Example for one key:
+"rules_al": "אל תהיי קולנית מדי\\nאל תיכשלי מול כולם"
+`;
+
+      let surveyData = `User Answers:\\n${answersSummary}`;
+
+      console.log("Prompt being sent to API:", builtInPrompt);
+
+      const requestBody = {
+        model: "gpt-4o",
+        messages: [{ role: "user", content: builtInPrompt }],
+      };
+
+      console.log("Request body:", JSON.stringify(requestBody));
+
       try {
-        const res = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${apiKey}`,
-            // Adding some debug headers
-            "X-Debug-Info": "printer-project-debug",
-          },
-          body: JSON.stringify(requestBody),
-          signal: controller.signal,
-          // Add mode for potential CORS issues
-          mode: "cors",
-        });
-        
-        clearTimeout(timeoutId);
-        
-        console.log("Response received. Status:", res.status);
-        console.log("Response headers:", JSON.stringify([...res.headers.entries()]));
-        console.log("Response type:", res.type);
-        
-        // Check for common HTTP errors
-        if (res.status === 401) {
-          console.error("Authentication error - Invalid API key");
-          alert("Authentication error: Invalid API key");
-          return;
-        }
-        
-        if (res.status === 403) {
-          console.error("Authorization error - No access to this resource");
-          alert("Authorization error: Your API key doesn't have permission");
-          return;
-        }
-        
-        if (res.status === 429) {
-          console.error("Rate limit exceeded or quota exceeded");
-          alert("Rate limit or quota exceeded. Try again later.");
-          return;
-        }
-        
-        if (!res.ok) {
-          console.error("API response not OK:", res.status, res.statusText);
-          alert(`API Error: ${res.status} ${res.statusText}`);
-          return;
-        }
-        
-        // Try getting response text first for debugging
-        const rawText = await res.text();
-        console.log("Raw response text:", rawText.substring(0, 200) + "...");
-        
-        // Convert text to JSON
-        let data;
-        try {
-          data = JSON.parse(rawText);
-        } catch (jsonError) {
-          console.error("JSON parse error:", jsonError);
-          console.error("Raw response:", rawText);
-          alert("Error parsing API response as JSON");
-          return;
-        }
-        
-        console.log("Full API response:", data);
-        
-        if (!data.choices || !data.choices.length) {
-          console.error("No choices in API response:", data);
-          alert("Invalid response format from API");
-          return;
-        }
-        
-        const content = data.choices[0]?.message?.content;
-        console.log("Response content:", content);
-        console.log("LLM Answer for Terminal:", content); // Added for terminal output
+        console.log("Sending request to OpenAI API...");
 
-        if (!content) {
-          console.error("Content is empty in response:", data.choices[0]);
-          alert("No response content from LLM");
-          return;
-        }
+        // Debug network conditions
+        console.log("Network status:", navigator.onLine ? "Online" : "Offline");
 
-        // Show success popup and clear form
-        setIsProfilePopupOpen(true);
-        setAnswers({});
-        setExamineeName("");
+        // Using a timeout to catch hanging requests
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
         try {
-          // The LLM should return a JSON string.
-          const llmResponse = JSON.parse(content);
-
-          const now = new Date();
-          const finalJson = {
-            name_of_examine: examineeName,
-            date: now.toLocaleDateString("he-IL"),
-            time: now.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" }),
-            ...llmResponse,
-          };
-
-          console.log("Sending final JSON to localhost:3000", finalJson);
-
-          // Send the result to localhost:3000
-          await fetch("http://localhost:3000", {
+          const res = await fetch("https://api.openai.com/v1/chat/completions", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              Authorization: `Bearer ${apiKey}`,
+              // Adding some debug headers
+              "X-Debug-Info": "printer-project-debug",
             },
-            body: JSON.stringify(finalJson),
+            body: JSON.stringify(requestBody),
+            signal: controller.signal,
+            // Add mode for potential CORS issues
+            mode: "cors",
           });
 
-          console.log("Successfully sent data to localhost:3000");
+          clearTimeout(timeoutId);
 
-        } catch (jsonError) {
-          console.error("Error processing or sending data:", jsonError);
-          console.error("Raw content from LLM:", content);
-          alert("An error occurred while processing the response. Check the console for details.");
-        }
-      } catch (fetchError) {
-        clearTimeout(timeoutId);
-        if (fetchError instanceof Error) {
-          if (fetchError.name === "AbortError") {
-            console.error("Request timed out after 30 seconds");
-            alert("API request timed out. Please try again.");
-          } else {
-            console.error("Fetch error:", fetchError);
-            alert(`Network error: ${fetchError.message}`);
+          console.log("Response received. Status:", res.status);
+          console.log("Response headers:", JSON.stringify([...res.headers.entries()]));
+          console.log("Response type:", res.type);
+
+          // Check for common HTTP errors
+          if (res.status === 401) {
+            console.error("Authentication error - Invalid API key");
+            alert("Authentication error: Invalid API key");
+            return;
           }
-        } else {
-          console.error("An unexpected error occurred:", fetchError);
-          alert("An unexpected error occurred. Please try again.");
+
+          if (res.status === 403) {
+            console.error("Authorization error - No access to this resource");
+            alert("Authorization error: Your API key doesn't have permission");
+            return;
+          }
+
+          if (res.status === 429) {
+            console.error("Rate limit exceeded or quota exceeded");
+            alert("Rate limit or quota exceeded. Try again later.");
+            return;
+          }
+
+          if (!res.ok) {
+            console.error("API response not OK:", res.status, res.statusText);
+            alert(`API Error: ${res.status} ${res.statusText}`);
+            return;
+          }
+
+          // Try getting response text first for debugging
+          const rawText = await res.text();
+          console.log("Raw response text:", rawText.substring(0, 200) + "...");
+
+          // Convert text to JSON
+          let data;
+          try {
+            data = JSON.parse(rawText);
+          } catch (jsonError) {
+            console.error("JSON parse error:", jsonError);
+            console.error("Raw response:", rawText);
+            alert("Error parsing API response as JSON");
+            return;
+          }
+
+          console.log("Full API response:", data);
+
+          if (!data.choices || !data.choices.length) {
+            console.error("No choices in API response:", data);
+            alert("Invalid response format from API");
+            return;
+          }
+
+          const content = data.choices[0]?.message?.content;
+          console.log("Response content:", content);
+          console.log("LLM Answer for Terminal:", content); // Added for terminal output
+
+          if (!content) {
+            console.error("Content is empty in response:", data.choices[0]);
+            alert("No response content from LLM");
+            return;
+          }
+
+          try {
+            // The LLM should return a JSON string.
+            const llmResponse = JSON.parse(content);
+
+            const now = new Date();
+            const finalJson = {
+              name_of_examine: examineeName, // Use state before it's cleared
+              date: now.toLocaleDateString("he-IL"),
+              time: now.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" }),
+              ...llmResponse,
+            };
+
+            // Clear form now that we have the data we need
+            setAnswers({});
+            setExamineeName("");
+
+            console.log("Final JSON:", finalJson);
+            await fetch("http://localhost:3000/generate-pdf", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(finalJson),
+            });
+            console.log("Successfully sent data to localhost:3000");
+          } catch (jsonError) {
+            console.error("Error processing or sending data:", jsonError);
+            console.error("Raw content from LLM:", content);
+            alert("An error occurred while processing the response. Check the console for details.");
+          }
+        } catch (fetchError) {
+          clearTimeout(timeoutId);
+          if (fetchError instanceof Error) {
+            if (fetchError.name === "AbortError") {
+              console.error("Request timed out after 30 seconds");
+              alert("API request timed out. Please try again.");
+            } else {
+              console.error("Fetch error:", fetchError);
+              alert(`Network error: ${fetchError.message}`);
+            }
+          } else {
+            console.error("An unexpected error occurred:", fetchError);
+            alert("An unexpected error occurred. Please try again.");
+          }
         }
+      } catch (e) {
+        console.error("Outer exception during API call:", e);
+        alert(`Error while sending survey: ${e instanceof Error ? e.message : String(e)}`);
       }
-    } catch (e) {
-      console.error("Outer exception during API call:", e);
-      alert(`Error while sending survey: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      // This ensures the popup is closed even if errors occur
+      setIsProfilePopupOpen(false);
     }
   };
 
@@ -380,7 +404,7 @@ The entire output must be a single, valid JSON object.
 
         {/* ──────────────────────────────── QUESTIONS ─────────────────────────────── */}
         {questions.map((q) => (
-          <Card key={q.id} className="mb-4 border-2 border-[#333333] rounded-none">
+          <Card key={q.id} id={`question-${q.id}`} className="mb-4 border-2 border-[#333333] rounded-none">
             <CardContent className="p-4">
               <div className="text-right">
                 <h2 className="font-bold text-[#333333] mb-4">
